@@ -6,11 +6,18 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
 
+find_package(catkin REQUIRED)
 find_package(Boost REQUIRED thread signals)
 find_package(Eigen REQUIRED)
 find_package(PCL REQUIRED COMPONENTS common kdtree io)
 
-include_directories (include ${EIGEN_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS})
+catkin_package(
+  INCLUDE_DIRS include
+  LIBRARIES ${PROJECT_NAME}
+  DEPENDS EIGEN PCL
+)
+
+include_directories(include ${catkin_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS})
 
 add_definitions(${EIGEN_DEFINITIONS})
 add_definitions(${PCL_DEFINITIONS})
@@ -54,6 +61,6 @@ add_library (${PROJECT_NAME}
 )
 
 add_executable (test_tracking test_tracking.cpp)
-target_link_libraries(${PROJECT_NAME} ${EIGEN_LIBRARIES} ${PCL_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${EIGEN_LIBRARIES} ${PCL_LIBRARIES})
 target_link_libraries (test_tracking ${PROJECT_NAME})
 
