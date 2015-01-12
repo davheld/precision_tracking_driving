@@ -6,7 +6,7 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
 
-find_package(catkin REQUIRED)
+find_package(catkin REQUIRED cmake_modules)
 find_package(Boost REQUIRED thread signals)
 find_package(Eigen REQUIRED)
 find_package(PCL REQUIRED COMPONENTS common kdtree io)
