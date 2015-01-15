@@ -45,6 +45,11 @@ public:
     return motion_model_->get_covariance_delta_position();
   }
 
+  void set_motion_model(const MotionModel& motion_model) {
+    *motion_model_ = motion_model;
+  }
+
+
   const MotionModel & get_motion_model() const {
     return *motion_model_;
   }

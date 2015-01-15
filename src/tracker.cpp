@@ -86,6 +86,8 @@ void Tracker::addPoints(
         best_transform.getEigen(&best_displacement);
 
         *estimated_velocity = (flip ? -1 : 1) * best_displacement / timestamp_diff;
+
+        motion_model_->set_mean_velocity_((*estimated_velocity).cast<double>());
       }
     } else {
       // Track using the centroid-based Kalman filter.

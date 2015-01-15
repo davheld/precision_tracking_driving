@@ -41,7 +41,7 @@ public:
 
 	void propagate(const double& time_diff);
 
-	double computeScore(const TransformComponents& components) const;
+  double computeScore(const TransformComponents& components) const;
 
   // Compute the score given the x,y, and z components.
   double computeScore(const double x, const double y, const double z) const;
@@ -56,7 +56,11 @@ public:
 
 	bool valid() const { return valid_; }
 
-    Eigen::Vector3d get_mean_delta_position() const {
+  void set_mean_velocity_(const Eigen::Vector3d& new_mean_velocity) {
+    mean_velocity_ = new_mean_velocity;
+  }
+
+  Eigen::Vector3d get_mean_delta_position() const {
         return mean_delta_position_;
 	}
 
