@@ -3,6 +3,10 @@
  *
  *  Created on: Jan 23, 2013
  *      Author: davheld
+ *
+ * Motion model used to predict the next location of a given object,
+ * given a previously estimated motion.
+ *
  */
 
 #ifndef __PRECISION_TRACKING__MOTION_MODEL_H_
@@ -99,9 +103,6 @@ private:
 
   double pdf_constant_;
 	double min_score_;
-
-	bool valid_eigen_vectors_;
-	Eigen::Matrix3d eigen_vectors_;
 
 	//R_t in the kalman filter - the amount of uncertainty propagation in 0.1 s
 	Eigen::Matrix3d covariance_propagation_uncertainty_;

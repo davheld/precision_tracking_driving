@@ -3,6 +3,10 @@
  *
  *  Created on: Nov 20, 2011
  *      Author: davheld
+ *
+ * Main class for tracking; updates the object's motion model and calls
+ * the appropriate tracker (precision tracker or otherwise).
+ *
  */
 
 #ifndef __PRECISION_TRACKING__TRACKER_H_
@@ -25,6 +29,16 @@ public:
 
   void clear();
 
+  // Estimates the velocity of an object.  Call this function each
+  // time the object is observed.
+  void addPoints(
+      const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& current_points,
+      const double current_timestamp,
+      const double sensor_horizontal_resolution,
+      const double sensor_vertical_resolution,
+      Eigen::Vector3f* estimated_velocity);
+
+  // Same as above, but also returns the maximum alignment probability.
   void addPoints(
       const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& current_points,
       const double timestamp,

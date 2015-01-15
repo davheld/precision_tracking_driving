@@ -1,39 +1,11 @@
-/********************************************************
-  Stanford Driving Software
-  Copyright (c) 2011 Stanford University
-  All rights reserved.
-  
-  Redistribution and use in source and binary forms, with
-  or without modification, are permitted provided that the
-  following conditions are met:
-  
-* Redistributions of source code must retain the above
-  copyright notice, this list of conditions and the
-  following disclaimer.
-* Redistributions in binary form must reproduce the above
-  copyright notice, this list of conditions and the
-  following disclaimer in the documentation and/or other
-  materials provided with the distribution.
-* The names of the contributors may not be used to endorse
-  or promote products derived from this software
-  without specific prior written permission.
-  
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
-  CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-  PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-  OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
-  DAMAGE.
- ********************************************************/
+/*
+ * params.h
+ *
+ *      Author: Brice Rebsamen
+ *
+ * Data structure to keep track of parameters for the tracker.
+ *
+ */
 
 #ifndef __PRECISION_TRACKING__PARAMS__H__
 #define __PRECISION_TRACKING__PARAMS__H__
@@ -254,9 +226,9 @@ struct Params
 
     // Density grid evaluator section
     kSpilloverRadius = 2.0;
-    kMaxXSize = 1000; // Total size = 3.7 GB
-    kMaxYSize = 1000; // At a resolution of 3.7 cm, a 10 m wide object will take 270 cells
-    kMaxZSize = 500;  // At a resolution of 3.7 cm, a 5 m tall object will take 135 cells.
+    kMaxXSize = 1000; // At a resolution of 3.7 cm, a 10 m wide object will take 270 cells
+    kMaxYSize = 1000;
+    kMaxZSize = 250;  // At a resolution of 3.7 cm, a 5 m tall object will take 135 cells.
 
     // down sampler section
     kUseCeil = true;
@@ -290,8 +262,6 @@ struct Params
   }
 };
 
-}
-
-
+} // namespace precision_tracking
 
 #endif // __PRECISION_TRACKING__PARAMS__H__

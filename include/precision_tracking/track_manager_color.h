@@ -1,3 +1,12 @@
+/*
+ * track_manager_color.h
+ *
+ *      Author: Alex Teichman
+ *
+ * I/O functionality for reading/writing a sequence of point clouds to disk.
+ *
+ */
+
 #ifndef __PRECISION_TRACKING__TRACK_MANAGER_COLOR_H
 #define __PRECISION_TRACKING__TRACK_MANAGER_COLOR_H
 
@@ -12,14 +21,14 @@
 #include <pcl/point_types.h>
 #include <pcl/io/pcd_io.h>
 
-#define POINTCLOUD_SERIALIZATION_VERSION 1
-#define TRACK_SERIALIZATION_VERSION 2
-#define TRACKMANAGER_SERIALIZATION_VERSION 2
-#define FRAME_SERIALIZATION_VERSION 0
-
 namespace precision_tracking {
 
 namespace track_manager_color {
+
+const int POINTCLOUD_SERIALIZATION_VERSION = 1;
+const int TRACK_SERIALIZATION_VERSION = 2;
+const int TRACKMANAGER_SERIALIZATION_VERSION = 2;
+const int FRAME_SERIALIZATION_VERSION = 0;
 
   class Frame {
   public:

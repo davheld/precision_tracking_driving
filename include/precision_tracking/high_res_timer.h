@@ -1,3 +1,12 @@
+/*
+ * high_res_timer.h
+ *
+ *      Author: Alex Teichman
+ *
+ * A class for measuring how long some piece of code takes to run.
+ *
+ */
+
 #ifndef __PRECISION_TRACKING__HIGH_RES_TIMER_H
 #define __PRECISION_TRACKING__HIGH_RES_TIMER_H
 
@@ -16,7 +25,8 @@ class HighResTimer {
 public:
   std::string description_;
 
-  HighResTimer(const std::string& description = "HighResTimer");
+  HighResTimer(const std::string& description = "HighResTimer",
+               const clockid_t& clock = CLOCK_PROCESS_CPUTIME_ID);
   void start();
   void stop();
   void reset(const std::string& description);
@@ -43,6 +53,7 @@ private:
   double total_us_;
   timespec start_;
   timespec end_;
+  clockid_t clock_;
 };
 
 class ScopedTimer

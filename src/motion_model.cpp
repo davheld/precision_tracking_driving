@@ -3,6 +3,7 @@
  *
  *  Created on: Jan 23, 2013
  *      Author: davheld
+ *
  */
 
 
@@ -25,7 +26,6 @@ MotionModel::MotionModel(const Params *params)
   : params_(params),
     pdf_constant_(1),
     min_score_(params_->kMotionMinProb),
-    valid_eigen_vectors_(false),
     valid_(false),
     flip_(1)
 {

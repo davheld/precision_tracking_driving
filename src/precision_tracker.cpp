@@ -3,6 +3,7 @@
  *
  *  Created on: May 12, 2014
  *      Author: davheld
+ *
  */
 
 
@@ -89,8 +90,8 @@ void PrecisionTracker::track(
   const double sensor_vertical_res =
       sensor_vertical_resolution_actual / down_sample_factor_prev;
 
-  // Align the previous points to the current points using the annealed
-  // dynamic histogram trakcer.
+  // Align the current points to the previous points using the annealed
+  // dynamic histogram tracker.
   adh_tracker3d_.track(
         params_->kInitialXYSamplingResolution, params_->kInitialZSamplingResolution,
         xRange, yRange, zRange,

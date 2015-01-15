@@ -3,6 +3,7 @@
  *
  *  Created on: Jul 30, 2014
  *      Author: davheld
+ *
  */
 
 #include <string>
@@ -15,6 +16,7 @@
 #include <precision_tracking/track_manager_color.h>
 #include <precision_tracking/tracker.h>
 #include <precision_tracking/high_res_timer.h>
+#include <precision_tracking/sensor_specs.h>
 
 using std::string;
 
@@ -204,57 +206,53 @@ void find_bad_frames(const precision_tracking::track_manager_color::TrackManager
   }
 }
 
-// Computes the sensor resolution for an object at a given distance,
-// for the 64-beam Velodyne.
-void getSensorResolution(const Eigen::Vector3f& centroid_local_coordinates,
-                         double* sensor_horizontal_res,
-                         double* sensor_vertical_res) {
-  // Get the distance to the tracked object.
-  const double horizontal_distance =
-      sqrt(pow(centroid_local_coordinates(0), 2) +
-           pow(centroid_local_coordinates(1), 2));
-
-  // The horizontal resolution for the 64-beam Velodyne spinning at 10 Hz
-  // is 0.18 degrees.
-  const double velodyne_horizontal_angular_res = 0.18;
-
-  // There are 64 beams spanning 26.8 vertical degrees, so the average spacing
-  // between each beam is computed as follows.
-  const double velodyne_vertical_angular_res = 26.8 / 63;
-
-  // We convert the angular resolution to meters for a given range.
-  const double velodyne_horizontal_res =
-      2 * horizontal_distance *
-      tan(velodyne_horizontal_angular_res / 2.0 * pi / 180.0);
-  const double velodyne_vertical_res =
-      2 * horizontal_distance *
-      tan(velodyne_vertical_angular_res / 2.0 * pi / 180.0);
-
-  *sensor_horizontal_res = velodyne_horizontal_res;
-  *sensor_vertical_res = velodyne_vertical_res;
-}
-
-void track(precision_tracking::Tracker* tracker,
+void track(
            const precision_tracking::track_manager_color::TrackManagerColor& track_manager,
+           const precision_tracking::Params& params,
+           const bool use_precision_tracker,
+           const bool do_parallel,
            std::vector<TrackResults>* velocity_estimates) {
-  int total_num_frames = 0;
-
   const std::vector< boost::shared_ptr<precision_tracking::track_manager_color::Track> >& tracks =
       track_manager.tracks_;
 
+  int total_num_frames = 0;
+  for (size_t i = 0; i < tracks.size(); ++i) {
+    total_num_frames += tracks[i]->frames_.size();
+  }
+
+  const int num_threads = do_parallel ? 8 : 1;
+
+  std::vector<precision_tracking::Tracker> trackers;
+  for (int i = 0; i < num_threads; ++i) {
+    precision_tracking::Tracker tracker(&params);
+    if (use_precision_tracker) {
+      tracker.setPrecisionTracker(
+          boost::make_shared<precision_tracking::PrecisionTracker>(&params));
+    }
+    trackers.push_back(tracker);
+  }
+
+  velocity_estimates->resize(tracks.size());
+
   std::ostringstream hrt_title_stream;
   hrt_title_stream << "Total time for tracking " << tracks.size() << " objects";
-  precision_tracking::HighResTimer hrt(hrt_title_stream.str());
+  precision_tracking::HighResTimer hrt(hrt_title_stream.str(),
+                                       do_parallel ? CLOCK_REALTIME :
+                                                     CLOCK_PROCESS_CPUTIME_ID);
   hrt.start();
 
   // Iterate over all tracks.
-  for (size_t i = 0; i < tracks.size(); ++i) {
+  #pragma omp parallel for num_threads(num_threads)
+  for (int i = 0; i < tracks.size(); ++i) {
+
+    precision_tracking::Tracker& tracker = trackers[omp_get_thread_num()];
+
     // Reset the tracker for this new track.
-    tracker->clear();
+    tracker.clear();
 
     // Extract frames.
     const boost::shared_ptr<precision_tracking::track_manager_color::Track>& track = tracks[i];
-    std::vector< boost::shared_ptr<precision_tracking::track_manager_color::Frame> > frames =
+    const std::vector< boost::shared_ptr<precision_tracking::track_manager_color::Frame> > frames =
         track->frames_;
 
     // Structure for storing estimated velocities for this track.
@@ -263,50 +261,50 @@ void track(precision_tracking::Tracker* tracker,
 
     // Iterate over all frames for this track.
     for (size_t j = 0; j < frames.size(); ++j) {
-      boost::shared_ptr<precision_tracking::track_manager_color::Frame> frame = frames[j];
+      const boost::shared_ptr<precision_tracking::track_manager_color::Frame> frame = frames[j];
 
       // Get the sensor resolution.
       double sensor_horizontal_resolution;
       double sensor_vertical_resolution;
-      getSensorResolution(frame->getCentroid(), &sensor_horizontal_resolution,
-                          &sensor_vertical_resolution);
+      precision_tracking::getSensorResolution(
+            frame->getCentroid(), &sensor_horizontal_resolution,
+            &sensor_vertical_resolution);
 
       // Track object.
       Eigen::Vector3f estimated_velocity;
-      double alignment_probability;
-      tracker->addPoints(frame->cloud_, frame->timestamp_,
+      tracker.addPoints(frame->cloud_, frame->timestamp_,
                          sensor_horizontal_resolution,
                          sensor_vertical_resolution,
-                         &estimated_velocity,
-                         &alignment_probability);
+                         &estimated_velocity);
 
       // The first time we see this object, we don't have a velocity yet.
       // After the first time, save the estimated velocity.
       if (j > 0) {
-        total_num_frames++;
         track_estimates.estimated_velocities.push_back(estimated_velocity);
 
         // By default, don't ignore any frames.
         track_estimates.ignore_frame.push_back(false);
       }
     }
-
-    velocity_estimates->push_back(track_estimates);
+    (*velocity_estimates)[i] = track_estimates;
   }
 
   hrt.stop();
   hrt.print();
+
   const double ms = hrt.getMilliseconds();
   printf("Mean runtime per frame: %lf ms\n", ms / total_num_frames);
 }
 
 void trackAndEvaluate(
-    precision_tracking::Tracker* tracker,
     const precision_tracking::track_manager_color::TrackManagerColor& track_manager,
-    const string gt_folder) {
+    const string gt_folder,
+    const precision_tracking::Params& params,
+    const bool use_precision_tracker,
+    const bool track_parallel) {
   // Track all objects and store the estimated velocities.
   std::vector<TrackResults> velocity_estimates;
-  track(tracker, track_manager, &velocity_estimates);
+  track(track_manager, params, use_precision_tracker, track_parallel, &velocity_estimates);
 
   // Find bad frames that we want to ignore.
   find_bad_frames(track_manager, &velocity_estimates);
@@ -328,33 +326,48 @@ void testKalman(const precision_tracking::track_manager_color::TrackManagerColor
   printf("Tracking objects with the centroid-based Kalman filter baseline. "
          "This method is very fast but not very accurate. Please wait...\n");
   precision_tracking::Params params;
-  precision_tracking::Tracker centroid_tracker(&params);
-  trackAndEvaluate(&centroid_tracker, track_manager, gt_folder);
+  trackAndEvaluate(track_manager, gt_folder, params, false, false);
 }
 
-void testPrecisionTracker(
+void testPrecisionTracker2D(
     const precision_tracking::track_manager_color::TrackManagerColor& track_manager,
     const string gt_folder) {
-  printf("\nTracking objects with our precision tracker. "
-         "This method is accurate and fairly fast. Please wait...\n");
+  printf("\nTracking objects with our precision tracker in 2D (single-threaded). "
+         "This method is accurate and fairly fast. Compared to the full 3D version, this method uses much less memory "
+         "and is much faster, but is slightly less accurate.  Please wait...\n");
   precision_tracking::Params params;
-  precision_tracking::Tracker precision_tracker(&params);
-  precision_tracker.setPrecisionTracker(
-      boost::make_shared<precision_tracking::PrecisionTracker>(&params));
-  trackAndEvaluate(&precision_tracker, track_manager, gt_folder);
+  trackAndEvaluate(track_manager, gt_folder, params, true, false);
+}
+
+void testPrecisionTracker2DParallel(
+    const precision_tracking::track_manager_color::TrackManagerColor& track_manager,
+    const string gt_folder) {
+  printf("\nTracking objects with our precision tracker in 2D in parallel. "
+         "This method is accurate and fairly fast. Compared to the full 3D version, this method uses much less memory "
+         "and is much faster, but is slightly less accurate.  Please wait...\n");
+  precision_tracking::Params params;
+  trackAndEvaluate(track_manager, gt_folder, params, true, true);
+}
+
+void testPrecisionTracker3D(
+    const precision_tracking::track_manager_color::TrackManagerColor& track_manager,
+    const string gt_folder) {
+  printf("\nTracking objects with our precision tracker in 3D (single-threaded). "
+         "This method is accurate and fairly fast. Compared to the 2D version, this method uses more memory "
+         "and is slower, but is more accurate.  Please wait...\n");
+  precision_tracking::Params params;
+  params.use3D = true;
+  trackAndEvaluate(track_manager, gt_folder, params, true, false);
 }
 
 void testPrecisionTrackerColor(
     const precision_tracking::track_manager_color::TrackManagerColor& track_manager,
     const string gt_folder) {
-  printf("\nTracking objects with our precision tracker using color. "
-         "This method is a bit more accurate but much slower. Please wait (will be slow)...\n");
+  printf("\nTracking objects with our precision tracker using color (single-threaded). "
+         "This method is a bit more accurate than the version without color but is much slower. Please wait (will be slow)...\n");
   precision_tracking::Params params;
   params.useColor = true;
-  precision_tracking::Tracker precision_tracker_color(&params);
-  precision_tracker_color.setPrecisionTracker(
-      boost::make_shared<precision_tracking::PrecisionTracker>(&params));
-  trackAndEvaluate(&precision_tracker_color, track_manager, gt_folder);
+  trackAndEvaluate(track_manager, gt_folder, params, true, false);
 }
 
 int main(int argc, char **argv)
@@ -380,7 +393,13 @@ int main(int argc, char **argv)
   testKalman(track_manager, gt_folder);
 
   // Testing our precision tracker - should be very accurate and quite fast.
-  testPrecisionTracker(track_manager, gt_folder);
+  testPrecisionTracker2D(track_manager, gt_folder);
+
+  // Testing our precision tracker - should be very accurate and quite fast.
+  testPrecisionTracker2DParallel(track_manager, gt_folder);
+
+  // Testing our precision tracker - should be very accurate and quite fast.
+  testPrecisionTracker3D(track_manager, gt_folder);
 
   // Testing our precision tracker with color - should be even more accurate
   // but slow.
