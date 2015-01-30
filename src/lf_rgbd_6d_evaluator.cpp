@@ -258,6 +258,7 @@ double LF_RGBD_6D_Evaluator::getPointProbability(
   const double sensor_horizontal_resolution =
       2 * horizontal_distance *
       tan(velodyne_horizontal_angular_res / 2.0 * pi / 180.0);
+
   const double sensor_vertical_resolution =
       2 * horizontal_distance *
       tan(velodyne_vertical_angular_res / 2.0 * pi / 180.0);
