@@ -33,13 +33,38 @@ DensityGrid2dEvaluator::DensityGrid2dEvaluator(const Params *params)
   , density_grid_(params_->kMaxXSize, vector<double>(
                     params_->kMaxYSize, log(smoothing_factor_)))
 {
+}
 
+DensityGrid2dEvaluator::DensityGrid2dEvaluator(const Params *params,
+                                               const double smoothing_factor)
+  : AlignmentEvaluator(params)
+  , density_grid_(params_->kMaxXSize, vector<double>(
+                    params_->kMaxYSize, log(smoothing_factor)))
+{
 }
 
 DensityGrid2dEvaluator::~DensityGrid2dEvaluator()
 {
 	// TODO Auto-generated destructor stub
 }
+
+void DensityGrid2dEvaluator::init(const double xy_sampling_resolution,
+                                  const double z_sampling_resolution,
+                                  const double xy_sensor_resolution,
+                                  const double z_sensor_resolution,
+                                  const double xy_error,
+                                  const double z_error,
+                                  const size_t num_current_points) {
+  AlignmentEvaluator::init(xy_sampling_resolution, z_sampling_resolution,
+                           xy_sensor_resolution, z_sensor_resolution,
+                           xy_error, z_error, num_current_points);
+
+  computeDensityGridParameters(
+        prev_points_, xy_sampling_resolution);
+
+  computeDensityGrid(prev_points_);
+}
+
 
 void DensityGrid2dEvaluator::init(const double xy_sampling_resolution,
           const double z_sampling_resolution,
@@ -52,15 +77,14 @@ void DensityGrid2dEvaluator::init(const double xy_sampling_resolution,
                            sensor_vertical_resolution, num_current_points);
 
   computeDensityGridParameters(
-        prev_points_, xy_sampling_resolution, sensor_horizontal_resolution);
+        prev_points_, xy_sampling_resolution);
 
   computeDensityGrid(prev_points_);
 }
 
 void DensityGrid2dEvaluator::computeDensityGridParameters(
     const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& prev_points,
-    const double xy_sampling_resolution,
-    const double xy_sensor_resolution)
+    const double xy_sampling_resolution)
 {
   // Get the appropriate size for the grid.
   xy_grid_step_ = xy_sampling_resolution;
@@ -69,7 +93,7 @@ void DensityGrid2dEvaluator::computeDensityGridParameters(
   pcl::PointXYZRGB max_pt;
   pcl::getMinMax3D(*prev_points, min_pt_, max_pt);
 
-  const double epsilon = 0.0001;
+  const double epsilon = 2; //0.0001;
 
   // We add one grid step of padding to allow for inexact matches.  The outer
   // grid cells are kept empty and are used to represent the empty space
@@ -80,8 +104,8 @@ void DensityGrid2dEvaluator::computeDensityGridParameters(
   // We add one grid step of padding to allow for inexact matches.  The outer
   // grid cells are kept empty and are used to represent the empty space
   // around the tracked object.
-  max_pt.x += 2 * xy_grid_step_;
-  max_pt.y += 2 * xy_grid_step_;
+  max_pt.x += 2 * xy_grid_step_ + epsilon;
+  max_pt.y += 2 * xy_grid_step_ + epsilon;
 
   // Find the appropriate size for the density grid.
   xSize_ = min(params_->kMaxXSize, max(1, static_cast<int>(
@@ -101,6 +125,7 @@ void DensityGrid2dEvaluator::computeDensityGridParameters(
   // number of grid cells away from the point.
   num_spillover_steps_xy_ =
       ceil(params_->kSpilloverRadius * sigma_xy_ / xy_grid_step_ - 1);
+  //printf("Spillover: %d, radius: %lf, sigma: %lf, grid: %lf\n", num_spillover_steps_xy_, params_->kSpilloverRadius, sigma_xy_, xy_grid_step_);
 }
 
 void DensityGrid2dEvaluator::computeDensityGrid(
@@ -115,6 +140,9 @@ void DensityGrid2dEvaluator::computeDensityGrid(
   // where x is the number of grid steps.
   const double xy_exp_factor =
       -1.0 * pow(xy_grid_step_, 2) / (2 * pow(sigma_xy_, 2));
+
+  //printf("x off: %lf, y off: %lf, step: %lf, sigma: %lf, factor: %lf, smoothing: %lf, spillover: %d\n",
+  //       x_offset, y_offset, xy_grid_step_, sigma_xy_, xy_exp_factor, smoothing_factor_, num_spillover_steps_xy_);
 
   // For any given point, the density falls off as a Gaussian to
   // neighboring regions.
@@ -136,6 +164,7 @@ void DensityGrid2dEvaluator::computeDensityGrid(
 
   // Build the density grid
   size_t num_points = points->size();
+  //printf("Building the grid: %zu, %d\n", num_points, num_spillover_steps_xy_);
 
   for (size_t i = 0; i < num_points; ++i) {
     const pcl::PointXYZRGB& pt = (*points)[i];
@@ -143,6 +172,7 @@ void DensityGrid2dEvaluator::computeDensityGrid(
     // Find the indices for this point.
     const int x_index = round(pt.x / xy_grid_step_ + x_offset);
     const int y_index = round(pt.y / xy_grid_step_ + y_offset);
+    //printf("Pt: %lf %lf, index: %d %d\n", pt.x, pt.y, x_index, y_index);
 
     // Add limit checks to make sure we don't segfault
     if (x_index < 1 || x_index > xSize_ - 2) {
@@ -230,6 +260,63 @@ double DensityGrid2dEvaluator::getLogProbability(
       measurement_discount_factor_ * log_measurement_prob;
 
   return log_prob;
+}
+
+double DensityGrid2dEvaluator::getLogProbability(const pcl::PointXYZRGB& pt) const
+{
+  // Amount of total log probability density for the given alignment.
+  //double total_log_density = 0;
+
+  //const double delta_x = 0;
+  //const double delta_y = 0;
+
+  // Offset to apply to each point to get the new position.
+  //const double x_offset = (delta_x - min_pt_.x) / xy_grid_step_;
+  //const double y_offset = (delta_y - min_pt_.y) / xy_grid_step_;
+
+  // Iterate over every point and look up its log probability density
+  // in the density grid.
+  //const size_t num_points = current_points->size();
+  //for (size_t i = 0; i < num_points; ++i) {
+    // Extract the point so we can compute its probability.
+    //const pcl::PointXYZRGB& pt = (*current_points)[i];
+
+    // We shift each point based on the proposed alignment, to try to
+    // align the current points with the previous points.  We then
+    // divide by the grid step to find the appropriate cell in the density
+    // grid.
+    const int x_index_shifted =
+        //min(max(0, static_cast<int>(round(pt.x / xy_grid_step_ + x_offset))),
+        min(max(0, static_cast<int>(round((pt.x - min_pt_.x) / xy_grid_step_))),
+            xSize_ - 1);
+    const int y_index_shifted =
+        //min(max(0, static_cast<int>(round(pt.y / xy_grid_step_ + y_offset))),
+        min(max(0, static_cast<int>(round((pt.y - min_pt_.y)/ xy_grid_step_))),
+            ySize_ - 1);
+
+    return density_grid_[x_index_shifted][y_index_shifted];
+
+
+    // Look up the log density of this grid cell and add to the total density.
+    //total_log_density +=
+    //    density_grid_[x_index_shifted][y_index_shifted];
+    //printf("Pt: %lf %lf, index: %d %d, density: %lf\n", pt.x, pt.y, x_index_shifted, y_index_shifted, density_grid_[x_index_shifted][y_index_shifted]);
+
+    //}
+
+  // Compute the motion model probability.
+  //const double motion_model_prob = motion_model.computeScore(
+  //            delta_x, delta_y, delta_z);
+
+  // Compute the log measurement probability.
+  //const double log_measurement_prob = total_log_density;
+
+  // Combine the motion model score with the (discounted) measurement score to
+  // get the final log probability.
+  //const double log_prob = log(motion_model_prob) +
+  //    measurement_discount_factor_ * log_measurement_prob;
+
+  //return log_measurement_prob;
 }
 
 } // namespace precision_tracking

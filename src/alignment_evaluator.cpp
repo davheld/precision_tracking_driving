@@ -35,6 +35,69 @@ void AlignmentEvaluator::init(
     const double z_sensor_resolution,
     const size_t num_current_points)
 {
+  // Compute the different sources of error in the xy directions.
+  const double sampling_error_xy = params_->kSigmaGridFactor * xy_sampling_resolution;
+  const double resolution_error_xy = params_->kSigmaFactor * xy_sensor_resolution;
+  const double noise_error_xy = params_->kMinMeasurementVariance;
+
+  // The variance is a combination of these 3 sources of error.
+  const double sigma_xy = sqrt(pow(sampling_error_xy, 2) +
+                   pow(resolution_error_xy, 2) +
+                   pow(noise_error_xy, 2));
+
+  // Compute the different sources of error in the z direction.
+  const double sampling_error_z = params_->kSigmaGridFactor * z_sampling_resolution;
+  const double resolution_error_z = params_->kSigmaFactor * z_sensor_resolution;
+  const double noise_error_z = params_->kMinMeasurementVariance;
+
+  // The variance is a combination of these 3 sources of error.
+  const double sigma_z = sqrt(pow(sampling_error_z, 2) + pow(resolution_error_z, 2) +
+                  pow(noise_error_z, 2));
+
+  init_sigma(xy_sampling_resolution, z_sampling_resolution, sigma_xy, sigma_z, num_current_points);
+}
+
+void AlignmentEvaluator::init(
+    const double xy_sampling_resolution,
+    const double z_sampling_resolution,
+    const double xy_sensor_resolution,
+    const double z_sensor_resolution,
+    const double xy_error,
+    const double z_error,
+    const size_t num_current_points)
+{
+  // Compute the different sources of error in the xy directions.
+  const double sampling_error_xy = params_->kSigmaGridFactor * xy_sampling_resolution;
+  const double resolution_error_xy = params_->kSigmaFactor * xy_sensor_resolution;
+  const double noise_error_xy = params_->kMinMeasurementVariance;
+
+  // The variance is a combination of these 3 sources of error.
+  const double sigma_xy = sqrt(pow(sampling_error_xy, 2) +
+                               pow(resolution_error_xy, 2) +
+                               pow(noise_error_xy, 2) +
+                               pow(xy_error, 2));
+
+
+  // Compute the different sources of error in the z direction.
+  const double sampling_error_z = params_->kSigmaGridFactor * z_sampling_resolution;
+  const double resolution_error_z = params_->kSigmaFactor * z_sensor_resolution;
+  const double noise_error_z = params_->kMinMeasurementVariance;
+
+  // The variance is a combination of these 3 sources of error.
+  const double sigma_z = sqrt(pow(sampling_error_z, 2) + pow(resolution_error_z, 2) +
+                              pow(noise_error_z, 2) + pow(z_error, 2));
+
+  init_sigma(xy_sampling_resolution, z_sampling_resolution, sigma_xy, sigma_z, num_current_points);
+
+}
+
+void AlignmentEvaluator::init_sigma(
+    const double xy_sampling_resolution,
+    const double z_sampling_resolution,
+    const double sigma_xy,
+    const double sigma_z,
+    const size_t num_current_points)
+{
   // Downweight all points in the current frame beyond kMaxDiscountPoints
   // because they are not all independent.
   if (num_current_points < params_->kMaxDiscountPoints) {
@@ -47,30 +110,14 @@ void AlignmentEvaluator::init(
   xy_sampling_resolution_ = xy_sampling_resolution;
   z_sampling_resolution_ = z_sampling_resolution;
 
-  // Compute the different sources of error in the xy directions.
-  const double sampling_error_xy = params_->kSigmaGridFactor * xy_sampling_resolution;
-  const double resolution_error_xy = params_->kSigmaFactor * xy_sensor_resolution;
-  const double noise_error_xy = params_->kMinMeasurementVariance;
-
-  // The variance is a combination of these 3 sources of error.
-  sigma_xy_ = sqrt(pow(sampling_error_xy, 2) +
-                   pow(resolution_error_xy, 2) +
-                   pow(noise_error_xy, 2));
-
-  // Compute the different sources of error in the z direction.
-  const double sampling_error_z = params_->kSigmaGridFactor * z_sampling_resolution;
-  const double resolution_error_z = params_->kSigmaFactor * z_sensor_resolution;
-  const double noise_error_z = params_->kMinMeasurementVariance;
-
-  // The variance is a combination of these 3 sources of error.
-  sigma_z_ = sqrt(pow(sampling_error_z, 2) + pow(resolution_error_z, 2) +
-                  pow(noise_error_z, 2));
+  sigma_xy_ = sigma_xy;
+  sigma_z_ = sigma_z;
 
   // Convert the variance to a factor such that
   // exp(-x^2 / 2 sigma^2) = exp(x^2 * exp_factor)
   // where x is the distance.
-  xy_exp_factor_ = -1.0 / (2 * pow(sigma_xy_, 2));
-  z_exp_factor_ = -1.0 / (2 * pow(sigma_z_, 2));
+  //xy_exp_factor_ = -1.0 / (2 * pow(sigma_xy_, 2));
+  //z_exp_factor_ = -1.0 / (2 * pow(sigma_z_, 2));
   xyz_exp_factor_ = -1.0 / (2 * (pow(sigma_xy_, 2)) + pow(sigma_z_, 2));
 }
 

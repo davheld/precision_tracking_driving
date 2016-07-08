@@ -43,7 +43,25 @@ public:
       const MotionModel& motion_model,
       ScoredTransforms<ScoredTransformXYZ>* scored_transforms);
 
+  void set_smoothing_factor(const double x) { smoothing_factor_ = x; }
+
 protected:
+  virtual void init_sigma(
+      const double xy_sampling_resolution,
+      const double z_sampling_resolution,
+      const double sigma_xy,
+      const double sigma_z,
+      const size_t num_current_points);
+
+  virtual void init(
+      const double xy_sampling_resolution,
+      const double z_sampling_resolution,
+      const double xy_sensor_resolution,
+      const double z_sensor_resolution,
+      const double xy_error,
+      const double z_error,
+      const size_t num_current_points);
+
   virtual void init(const double xy_sampling_resolution,
             const double z_sampling_resolution,
             const double xy_sensor_resolution,
@@ -74,8 +92,8 @@ protected:
   // Convert the variance to a factor such that
   // exp(-x^2 / 2 sigma^2) = exp(x^2 * exp_factor)
   // where x is the distance.
-  double xy_exp_factor_;
-  double z_exp_factor_;
+  //double xy_exp_factor_;
+  //double z_exp_factor_;
   double xyz_exp_factor_;
 
   // Smoothing factor for the measurement model, so we never assign a point

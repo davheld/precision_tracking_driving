@@ -34,7 +34,18 @@ namespace precision_tracking {
 class DensityGrid2dEvaluator : public AlignmentEvaluator {
 public:
   DensityGrid2dEvaluator(const Params *params);
+  DensityGrid2dEvaluator(const Params *params, const double smoothing_factor);
   virtual ~DensityGrid2dEvaluator();
+
+  double getLogProbability(const pcl::PointXYZRGB& pt) const;
+
+  void init(    const double xy_sampling_resolution,
+                const double z_sampling_resolution,
+                const double xy_sensor_resolution,
+                const double z_sensor_resolution,
+                const double xy_error,
+                const double z_error,
+                const size_t num_current_points);
 
 private:
   void init(const double xy_sampling_resolution,
@@ -52,8 +63,7 @@ private:
 
   void computeDensityGridParameters(
       const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr& prev_points,
-      const double xy_sampling_resolution,
-      const double xy_sensor_resolution);
+      const double xy_sampling_resolution);
 
   // Pre-cache probability values in a density grid for fast lookups.
   void computeDensityGrid(
